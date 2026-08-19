@@ -1,0 +1,25 @@
+CLAUDE.md
+docs/claude-web-design/
+docs/assignment-files/*.pdf
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# Secrets / env
+.env
+
+# Generated data (regenerate via ingestion script, not committed)
+*.db
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+
+# Runtime artifacts
+n8n_data/
+audio_uploads/
+
+# OS
+.DS_Store
