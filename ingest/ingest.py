@@ -133,7 +133,10 @@ class MergeEngine:
         return new_id, "none", "high", True
 
     def _create_person(self, full_name, norm_email, norm_phone):
-        cur = self.conn.execute("INSERT INTO people (full_name) VALUES (?)", (full_name,))
+        cur = self.conn.execute(
+            "INSERT INTO people (full_name, email, phone_normalized) VALUES (?, ?, ?)",
+            (full_name, norm_email, norm_phone),
+        )
         person_id = cur.lastrowid
         if norm_email:
             self.email_index.setdefault(norm_email, person_id)

@@ -34,3 +34,11 @@
   running app (upload path): submitted a synthetic test WAV, confirmed extracted metrics matched a
   local sanity check exactly, confirmed the listing view and audio playback both work; test
   artifacts then removed from the DB so it stays in the clean Task 1+2 state for the real demo.
+- Bugfix (found during Task 4's systematic scan): `ingest/ingest.py`'s `_create_person()` only
+  inserted `full_name` on row creation, leaving `email`/`phone_normalized` to be filled in later by
+  each source-specific `UPDATE` — two of the three per-source `UPDATE`s were missing those columns,
+  so people first created from source2 or source3 alone had `NULL` email/phone in storage despite
+  that value being used in memory to match them. Fixed by writing both columns at creation time.
+  Re-ran the full ingestion pipeline (61 people, same merge structure) and re-verified the scan
+  found zero remaining cases. Re-ran Task 2's n8n flow afterward since regenerating the DB wiped
+  its `skill_tags` writes.
