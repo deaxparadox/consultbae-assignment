@@ -23,3 +23,14 @@
   contain commas) — found by reading the installed node's source inside the container, not
   guessed. Flow exported to `n8n/skill-tagging-flow.json` (contains only credential name/ID
   references, no secrets — verified before committing).
+- Task 3: built the Streamlit audio app (`audio_app/app.py`, `audio_app/audio_metrics.py`) —
+  Submit view (name/phone + `st.audio_input()` record or file upload) writes a `people` row
+  (matched/created via the same phone-normalization logic as Task 1) and a `submissions` row;
+  All Submissions view lists every submission with playback and its properties table. Metric
+  ownership split per ADR 0001: pydub owns duration/sample rate/bitrate, librosa owns loudness
+  (frame-based RMS → dB). Hit and fixed a real environment issue: Python 3.13 removed the stdlib
+  `audioop` module pydub depends on — added the official `audioop-lts` backport rather than
+  downgrading Python or patching around it. Verified end-to-end via browser automation against the
+  running app (upload path): submitted a synthetic test WAV, confirmed extracted metrics matched a
+  local sanity check exactly, confirmed the listing view and audio playback both work; test
+  artifacts then removed from the DB so it stays in the clean Task 1+2 state for the real demo.

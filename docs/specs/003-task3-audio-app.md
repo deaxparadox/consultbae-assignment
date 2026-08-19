@@ -31,6 +31,24 @@ the same phone-normalization rule as Task 1) and a `submissions` row with extrac
 - Deployment: run locally for the demo recording (assignment explicitly allows this). Cloud
   deployment (Streamlit Cloud/Render) is optional stretch only, not required.
 
+## Amendment (found during implementation)
+- Python 3.13 (the installed interpreter) removed the stdlib `audioop` module (PEP 594), which
+  `pydub` imports unconditionally. Fix was the official `audioop-lts` PyPI backport (added to
+  `requirements.txt` as `audioop-lts; python_version >= "3.13"`), not a Python downgrade or a
+  pydub replacement — root cause is a stdlib removal with a known, maintained backport, not a
+  design problem.
+- Bitrate is computed as the decoded PCM bitrate (`sample_rate × bit_depth × channels`) uniformly
+  for all formats, not just WAV — pydub doesn't expose the original container's encoded bitrate
+  (e.g. an mp3/webm's actual compressed bitrate) without extra tooling (ffprobe parsing), so this
+  is a deliberate simplification: consistent and defensible across formats, at the cost of not
+  reflecting a compressed file's true on-disk bitrate. Worth being able to explain this trade-off
+  live if asked.
+- End-to-end verified via browser automation against the running app: submitted a synthetic test
+  WAV through the upload path, confirmed the 4 extracted metrics matched a local direct-function-call
+  sanity check exactly, and confirmed the listing view shows the same values with working audio
+  playback. Test person/submission/audio file were then deleted so the DB stays in the clean
+  Task 1 + Task 2 state (61 people, 0 submissions) for the real demo recording.
+
 ## Out of scope here
 Bonus noise/quality estimate — attempt only if time remains after core Tasks 1-4 are solid; not
 blocking for this spec's completion.
