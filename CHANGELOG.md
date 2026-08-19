@@ -50,3 +50,8 @@
   split-across-sources-with-no-anchor as documented known limitations, and the Task 1 bug found and
   fixed above. Full scan performed: zero malformed phones/emails, zero out-of-range
   experience/CTC/projects values, zero date-parse failures, beyond what's listed in the table.
+- Task 5: wrote `TASK5_SCALING_NOTES.md` (one page, no code) — SQLite write concurrency, local
+  disk audio storage, Streamlit's single-process model, and entity-resolution degrading at volume
+  as the 4 things that break first at 5,000 workers. The entity-resolution point is grounded in
+  real evidence from Task 4's scan (the actual un-merged same-name records and the
+  split-across-sources case found in the 102-row test data), not hypothetical concern.
