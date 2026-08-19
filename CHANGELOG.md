@@ -55,3 +55,8 @@
   as the 4 things that break first at 5,000 workers. The entity-resolution point is grounded in
   real evidence from Task 4's scan (the actual un-merged same-name records and the
   split-across-sources case found in the 102-row test data), not hypothetical concern.
+- Wrote `README.md`: setup steps for all 3 runtime pieces (ingestion script, n8n via Docker,
+  Streamlit app), links to `DATA_ISSUES.md`/`TASK5_SCALING_NOTES.md`, and a draft stuck log
+  covering the 3 real technical incidents hit while building this (n8n parameter syntax, Python
+  3.13/audioop, the Task 1 email/phone persistence bug) — flagged as needing the user's own review
+  and personalization before submission, since the assignment grades this section on authenticity.
