@@ -41,4 +41,12 @@
   that value being used in memory to match them. Fixed by writing both columns at creation time.
   Re-ran the full ingestion pipeline (61 people, same merge structure) and re-verified the scan
   found zero remaining cases. Re-ran Task 2's n8n flow afterward since regenerating the DB wiped
-  its `skill_tags` writes.
+  its `skill_tags` writes — reconfirmed 56/61 tagged, 0 remaining untagged with skills.
+- Task 4: wrote `DATA_ISSUES.md` from real pipeline output — every row traces to
+  `ingest/ingestion_log.txt` or a direct query against `consultbae.db`/`source_records`. Covers 3
+  malformed/blank rows, phone/email/date/CTC/verified format inconsistencies and their
+  normalization rules, 2 deliberate non-normalization judgment calls (city casing, gig-rate units),
+  the one real flagged name-mismatch case, same-name-different-people and
+  split-across-sources-with-no-anchor as documented known limitations, and the Task 1 bug found and
+  fixed above. Full scan performed: zero malformed phones/emails, zero out-of-range
+  experience/CTC/projects values, zero date-parse failures, beyond what's listed in the table.
