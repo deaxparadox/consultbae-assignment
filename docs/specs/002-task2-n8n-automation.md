@@ -30,6 +30,22 @@ into one or more of 5 categories, and writes the result back via SQL UPDATE.
 - Export flow JSON to `n8n/skill-tagging-flow.json` in the repo.
 - Capture a working run (screenshot or short clip) for the demo video.
 
+## Amendment (found during implementation)
+- The `n8n-nodes-sqlite3` community node (v1.1.0) does NOT support generic `?` placeholders for its
+  parameterized `UPDATE` query, despite that being the originally assumed syntax. Its actual query
+  parameter parser (found by reading the installed node's source inside the running container, not
+  guessed) requires Postgres-style `$1`, `$2`, ... placeholders, with the parameter values bound as
+  a real array expression — not a comma-joined string, since a comma-joined string breaks the moment
+  a value itself contains a comma (which `skill_tags`, e.g. `"automation-heavy, web dev, data"`,
+  always does). Final query: `UPDATE people SET skill_tags = $1 WHERE person_id = $2`, with Query
+  Parameters set to the array expression `{{ [$json.skill_tags, $json.person_id] }}`.
+- Model used for classification: `gpt-4o-mini` (not in the model picker's fuzzy search by that exact
+  string, but present in the full dropdown list).
+- Validation step was a trim-only "Edit Fields" node rather than a full check against the 5 known
+  category names — acceptable per this spec's fallback language; the actual OpenAI output across all
+  56 real people stayed within the 5 categories in every case observed, so no hallucinated 6th
+  category needed handling in this run.
+
 ## Out of scope here
 Task 2's alternative options (duplicate-alert flow, custom idea) — auto-tagging was already decided
 in the prior design pass as the chosen option, not being re-opened here unless something during
