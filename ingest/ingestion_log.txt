@@ -1,0 +1,20 @@
+Removed existing consultbae.db — starting fresh
+
+=== source1_naukri_applicants.csv: 42 data rows in file ===
+  FLAGGED: 'Rohit Verma' matches existing person_id=24 ('R. Verma') on email, but names differ — NOT auto-merged, creating separate record
+
+=== source2_gig_workers.csv: 32 data rows in file ===
+  SKIPPED line 12: fully blank row
+  SKIPPED line 20: malformed/shifted row (email_id column contains 'react, javascript, mysql', not a valid email) — raw: {'email_id': 'react, javascript, mysql', 'worker_name': 'ISHA.CHOPRA95@MAILTEST.EXAMPLE.ORG', 'rate': 'Isha Chopra', 'location': '1406/hr', 'status': 'Pune', 'skill_tags': 'active'}
+
+=== source3_cbnexus_contacts.csv: 31 data rows in file ===
+  SKIPPED line 16: repeated header row embedded as data
+
+=== SUMMARY ===
+Rows read (excluding skipped): 102
+Rows skipped (malformed/blank): 3
+People created: 61
+Rows merged into existing people: 41
+Flagged (name mismatch on email/phone match): 1
+Total people in DB: 61
+Total source_records rows: 102

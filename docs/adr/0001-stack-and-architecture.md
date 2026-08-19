@@ -14,6 +14,15 @@ These decisions were made in an earlier design pass (web research + adversarial 
 inline in the original design notes) before implementation started. Recorded here as the binding
 architecture reference; per-task specs reference this ADR rather than re-deriving these calls.
 
+## Amendments (found during implementation)
+- **`gig_rate_unit` column added** to `people` (nullable text, `hourly`/`monthly`). Not anticipated
+  in the original design: source2's `rate` field mixes per-hour (`"1415/hr"`) and per-month
+  (`"15k/month"`) values with no conversion rule given anywhere in the source data or prior design.
+  Converting between them silently would require guessing a working-hours-per-month assumption not
+  present in the data — instead `gig_rate_normalized` stores the numeric amount in its native unit
+  and `gig_rate_unit` records which unit that is, so nothing is silently misrepresented. Logged as a
+  judgment call in `DATA_ISSUES.md`, not treated as a design gap to silently patch around.
+
 ## Decisions
 
 **Database: SQLite**, file-based, at project root, shared by Task 1 (writer), Task 2 (reader/writer
@@ -29,7 +38,7 @@ a connection-string swap, not a redesign).
   `phone_raw`, `city_raw` (kept as-is, inconsistency logged in Task 4 report rather than normalized),
   `skill_tags` (written by Task 2's LLM step), `skills_raw` (union of source1+source2 skills, feeds
   Task 2), `experience_years`, `current_ctc_normalized`/`current_ctc_raw`,
-  `applied_date_normalized`/`applied_date_raw`, `gig_rate_normalized`/`gig_rate_raw`,
+  `applied_date_normalized`/`applied_date_raw`, `gig_rate_normalized`/`gig_rate_raw`/`gig_rate_unit` (see Amendments),
   `gig_status_normalized`/`gig_status_raw`, `verified`, `projects_completed`. All flattened fields
   nullable since not every person appears in every source.
 - `source_records` (provenance): `record_id` PK, `person_id` FK, `source_file`, `raw_row_json`,

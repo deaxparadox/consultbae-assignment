@@ -5,7 +5,7 @@ Tracking file for ConsultBae AI Automation take-home assignment. Deadline: 2026-
 ## Setup
 - [x] Create public GitHub repo `deaxparadox/consultbae-assignment`, push initial commit (CSVs + .gitignore). CLAUDE.md and docs/claude-web-design/ excluded per user decision.
 - [x] ADR 0001: stack & architecture decisions (docs/adr/0001-stack-and-architecture.md)
-- [ ] Spec + implement Task 1 — Merge pipeline (docs/specs/001-task1-merge-pipeline.md)
+- [x] Spec + implement Task 1 — Merge pipeline (docs/specs/001-task1-merge-pipeline.md) — 61 people from 102 rows, 41 merges, 1 flagged, 3 malformed rows skipped. See ingest/ingestion_log.txt for the real run output.
 - [ ] Spec + implement Task 2 — n8n automation (docs/specs/002-task2-n8n-automation.md)
 - [ ] Spec + implement Task 3 — Audio collection app (docs/specs/003-task3-audio-app.md)
 - [ ] Spec + implement Task 4 — Data issues report (docs/specs/004-task4-data-issues-report.md)
