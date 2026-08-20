@@ -7,42 +7,42 @@ and `docs/specs/` for one spec per task.
 
 ## Setup
 
-### 1. Python environment
+### Option A — one command (Docker Compose)
+```bash
+docker volume create n8n_data   # first time only, if it doesn't already exist
+docker compose up -d --build
+```
+Brings up both n8n (`http://localhost:5678`) and the Streamlit audio app (`http://localhost:8501`)
+together, sharing this repo via bind mount so both see the same `consultbae.db`. n8n's own data
+(owner account, credentials, installed community node, workflows) persists in the external
+`n8n_data` named volume across restarts/rebuilds.
+
+Build the database first (one-off, not part of the normal `up` — it drops and recreates
+`consultbae.db`, which would wipe any `skill_tags` already written by Task 2):
+```bash
+docker compose run --rm audio_app python ingest/ingest.py
+```
+Then in the n8n UI: create an owner account (first run only), Settings → Community Nodes → install
+`n8n-nodes-sqlite3`, add an OpenAI credential and a SQLite credential (Database File Path
+`/data/consultbae.db` — that's the container path; the bind mount maps it to the repo root on the
+host), import `n8n/skill-tagging-flow.json` (reassigning both credentials to your own — exported
+flows only carry credential name/ID references, not the credentials themselves), and run it via
+the manual trigger.
+
+### Option B — run each piece directly on the host
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+.venv/bin/pip install -r requirements.txt   # requires ffmpeg installed as a system dependency
+.venv/bin/python ingest/ingest.py           # Task 1 — builds consultbae.db, logs to ingest/ingestion_log.txt
 ```
-Requires `ffmpeg` installed as a system dependency (used by `pydub` for audio decoding).
-
-### 2. Task 1 — build the database
-```bash
-.venv/bin/python ingest/ingest.py
-```
-Reads the 3 CSVs in `docs/assignment-files/`, creates `consultbae.db` at the repo root, and prints
-a summary (rows processed, people created/merged, flagged cases, skipped malformed rows) — also
-written to `ingest/ingestion_log.txt`. This is the evidence source for `DATA_ISSUES.md`.
-
-### 3. Task 2 — n8n skill auto-tagging
+Task 2 (n8n) — same as Option A's n8n steps, but launched standalone instead of via compose:
 ```bash
 docker run -d --name n8n -p 5678:5678 \
   -v n8n_data:/home/node/.n8n \
   -v "$(pwd)":/data \
   docker.n8n.io/n8nio/n8n
 ```
-Then in the browser at `http://localhost:5678`:
-1. Create an owner account (first-run only, local instance).
-2. Settings → Community Nodes → install `n8n-nodes-sqlite3`.
-3. Add credentials:
-   - **OpenAI** — your own API key.
-   - **SQLite** — Database File Path: `/data/consultbae.db` (this is the container-internal path;
-     the bind mount above maps it to the repo root on the host).
-4. Import `n8n/skill-tagging-flow.json` (Workflows → Import from File), or rebuild it by hand per
-   `docs/specs/002-task2-n8n-automation.md` — reassign both credentials to your own if importing,
-   since exported flows only carry credential name/ID references, not the credentials themselves.
-5. Run it via the manual trigger. It reads people with skills but no `skill_tags` yet, classifies
-   them via OpenAI, and writes the result back.
-
-### 4. Task 3 — audio collection app
+Task 3 (audio app):
 ```bash
 .venv/bin/streamlit run audio_app/app.py
 ```

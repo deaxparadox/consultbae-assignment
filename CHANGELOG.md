@@ -60,3 +60,11 @@
   covering the 3 real technical incidents hit while building this (n8n parameter syntax, Python
   3.13/audioop, the Task 1 email/phone persistence bug) — flagged as needing the user's own review
   and personalization before submission, since the assignment grades this section on authenticity.
+- Added `docker-compose.yml` + `Dockerfile` + `.dockerignore` to launch n8n and the Streamlit app
+  together with `docker compose up -d --build`. The n8n service reuses the existing external
+  `n8n_data` named volume rather than a fresh one, so the already-built owner account, workflow,
+  installed community node, and credentials aren't lost; the audio app bind-mounts the repo so it
+  shares the same `consultbae.db` on the host. Verified by removing the standalone `n8n` container
+  and bringing the stack up via compose: n8n showed a normal login screen (not first-run setup),
+  and the "Skill Auto-Tagging" workflow, `n8n-nodes-sqlite3`, and both credentials all confirmed
+  intact afterward. README updated with the one-command path as the primary setup option.
