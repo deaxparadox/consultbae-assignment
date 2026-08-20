@@ -83,3 +83,5 @@
   port mappings to `127.0.0.1:PORT:PORT`. Rebuilt the image with the old cached layer removed,
   verified both files are now empty/unreachable inside both containers, and confirmed the DB is
   still accessible and n8n's persisted state (login required, workflow, credentials) survived.
+- Rewrote `README.md` in a plainer, first-person voice — same setup steps, report links, and stuck
+  log content, just rephrased so it reads like the candidate wrote it rather than generated docs.

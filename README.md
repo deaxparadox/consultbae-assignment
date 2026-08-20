@@ -1,98 +1,120 @@
 # ConsultBae — AI Automation Take-Home Assignment
 
-Merges 3 messy CSV sources into one SQLite database, auto-tags each person's skill category via an
-n8n + OpenAI flow, and collects audio submissions through a small Streamlit app — all sharing the
-same database. See `docs/adr/0001-stack-and-architecture.md` for the full architecture rationale
-and `docs/specs/` for one spec per task.
+Three messy CSV exports from three different systems, merged into one SQLite database. An n8n flow
+reads people out of it, gets OpenAI to classify their skills, and writes the tags back. A small
+Streamlit app lets a gig worker submit a name, phone number, and an audio recording, pulling out
+duration/sample rate/bitrate/loudness automatically. All three pieces share the same database.
 
-## Setup
+Why I made the choices I did is written up in `docs/adr/0001-stack-and-architecture.md`, and each
+task has its own short spec under `docs/specs/` if you want the reasoning behind a specific piece.
 
-### Option A — one command (Docker Compose)
+## Getting it running
+
+I built this two ways — pick whichever is easier for you.
+
+### The easy way: Docker Compose
+
 ```bash
-docker volume create n8n_data   # first time only, if it doesn't already exist
+docker volume create n8n_data   # only needed the very first time
 docker compose up -d --build
 ```
-Brings up both n8n (`http://localhost:5678`) and the Streamlit audio app (`http://localhost:8501`)
-together, sharing this repo via bind mount so both see the same `consultbae.db`. n8n's own data
-(owner account, credentials, installed community node, workflows) persists in the external
-`n8n_data` named volume across restarts/rebuilds.
 
-Build the database first (one-off, not part of the normal `up` — it drops and recreates
-`consultbae.db`, which would wipe any `skill_tags` already written by Task 2):
+That brings up n8n at `localhost:5678` and the Streamlit app at `localhost:8501` together. Both
+containers see the same repo through a bind mount, so they're reading and writing the same
+`consultbae.db`. n8n keeps its own state (owner login, credentials, the installed community node,
+the workflow itself) in a separate named volume, so restarting or rebuilding doesn't wipe any of
+that out.
+
+Before any of that works you need the database to actually exist:
+
 ```bash
 docker compose run --rm audio_app python ingest/ingest.py
 ```
-Then in the n8n UI: create an owner account (first run only), Settings → Community Nodes → install
-`n8n-nodes-sqlite3`, add an OpenAI credential and a SQLite credential (Database File Path
-`/data/consultbae.db` — that's the container path; the bind mount maps it to the repo root on the
-host), import `n8n/skill-tagging-flow.json` (reassigning both credentials to your own — exported
-flows only carry credential name/ID references, not the credentials themselves), and run it via
-the manual trigger.
 
-### Option B — run each piece directly on the host
+I kept this out of the normal startup on purpose — it rebuilds `consultbae.db` from scratch every
+time, and if you'd already run the n8n tagging step, that would wipe the tags back out. Run it once
+up front.
+
+Then in n8n itself: set up the owner account (only asks once), go to Settings → Community Nodes and
+install `n8n-nodes-sqlite3`, and add two credentials — an OpenAI one with your own key, and a SQLite
+one pointed at `/data/consultbae.db` (that's the path *inside* the container; the bind mount is what
+makes it line up with the real file on your machine). After that, import
+`n8n/skill-tagging-flow.json` from the Workflows screen, swap in your own two credentials on the
+nodes that need them (an exported flow only remembers credential names, not the actual secrets),
+and hit the manual trigger to run it.
+
+### The other way: everything on your own machine, no Docker for the Python bits
+
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt   # requires ffmpeg installed as a system dependency
-.venv/bin/python ingest/ingest.py           # Task 1 — builds consultbae.db, logs to ingest/ingestion_log.txt
+.venv/bin/pip install -r requirements.txt   # you'll need ffmpeg installed separately for this
+.venv/bin/python ingest/ingest.py
 ```
-Task 2 (n8n) — same as Option A's n8n steps, but launched standalone instead of via compose:
+
+That last command is Task 1 — it builds `consultbae.db` from the three CSVs and prints a summary of
+what it did (also saved to `ingest/ingestion_log.txt`, which is where the numbers in
+`DATA_ISSUES.md` actually came from).
+
+n8n still needs Docker either way:
+
 ```bash
 docker run -d --name n8n -p 5678:5678 \
   -v n8n_data:/home/node/.n8n \
   -v "$(pwd)":/data \
   docker.n8n.io/n8nio/n8n
 ```
-Task 3 (audio app):
+
+then the same setup steps as above. And the audio app:
+
 ```bash
 .venv/bin/streamlit run audio_app/app.py
 ```
-Opens at `http://localhost:8501`. "Submit" records/uploads audio and writes a person + submission;
-"All Submissions" lists everything with playback and extracted properties (duration, sample rate,
-bitrate, loudness).
 
-## Data issues report
-See [`DATA_ISSUES.md`](DATA_ISSUES.md) — every problem found in the 3 source files and what the
-ingestion script does about it, generated from the actual pipeline's output.
+which opens at `localhost:8501` — one tab to submit a recording (record it right in the browser or
+upload a file), another that lists everything submitted so far with a play button and the extracted
+properties next to it.
 
-## Scaling stretch (Task 5)
-See [`TASK5_SCALING_NOTES.md`](TASK5_SCALING_NOTES.md).
+## The data issues
 
-## Stuck log
+`DATA_ISSUES.md` has the full list of what was wrong with the three source files and what I did
+about each one. Every number in there came from actually running the pipeline and querying the
+resulting database — nothing in it is from memory.
 
-> Draft — three things genuinely came up while building this that took real debugging, not
-> guesswork. Read through these (and the corresponding ADR/spec amendment notes they reference)
-> before the live call so you can speak to them in your own words — this section is meant to be
-> reviewed and personalized, not submitted as-is.
+## If this had to handle 5,000 people in a weekend
 
-**1. The n8n community SQLite node's parameter syntax wasn't what the docs/prior design assumed.**
-The plan was a standard parameterized `UPDATE people SET skill_tags = ? WHERE person_id = ?` with
-generic `?` placeholders. It failed with "Too few parameter values were provided." There's no web
-access from inside the environment building this, so instead of guessing at syntax variants, the
-fix came from reading the installed `n8n-nodes-sqlite3` package's actual source file inside the
-running Docker container (`docker exec n8n cat .../executeQuery.operation.js`). That showed it
-parses placeholders with a Postgres-style `/\$(\d+)/g` regex — so it needs `$1`, `$2`, ... — and
-that its parameter-splitting logic assumes a comma-joined string unless given a real array, which
-breaks the moment a parameter value itself contains a comma (which `skill_tags`, e.g.
-`"automation-heavy, web dev, data"`, always does). Both fixes were needed together: `$1`/`$2`
-placeholders, and an actual array expression (`{{ [$json.skill_tags, $json.person_id] }}`) instead
-of a string. See `docs/specs/002-task2-n8n-automation.md`'s Amendment section.
+`TASK5_SCALING_NOTES.md` — what I think would actually break first, based on how this specific
+system is built rather than generic scaling advice.
 
-**2. `pydub` wouldn't import at all — Python 3.13 removed a module it depends on.**
-`ModuleNotFoundError: No module named 'audioop'`. Python 3.13 removed the stdlib `audioop` module
-(PEP 594); `pydub` imports it unconditionally. Rejected downgrading the Python version (too blunt,
-affects everything else) and rejected switching away from pydub (it was already the deliberate
-choice for consistent duration/sample-rate/bitrate extraction across formats). The actual fix is
-the `audioop-lts` package — a backport published specifically for this removal — added as a
-conditional dependency (`audioop-lts; python_version >= "3.13"`). See
-`docs/specs/003-task3-audio-app.md`'s Amendment section.
+## Where I actually got stuck
 
-**3. A real bug in the merge pipeline itself, only caught by Task 4's systematic scan.**
-Task 4 requires an exhaustive scan of the actual database, not just the issues already known from
-looking at the CSVs by eye. That scan turned up 5 people whose `email` or `phone_normalized` column
-was `NULL` in the database despite that exact value having been used, in memory, to match other
-rows against them moments earlier during ingestion. Root cause: the function that creates a brand
-new person row only inserted `full_name` — email/phone were meant to get backfilled by each
-source file's later `UPDATE` statement, and two of the three per-source `UPDATE`s were missing
-those columns. Fixed by writing both columns directly at row-creation time instead, then re-ran the
-full pipeline and re-verified the scan found zero remaining cases. This is exactly the kind of
-"caught in a full scan, not caught by eyeballing" issue Task 4 is meant to surface.
+Three things came up while building this that took real digging, not just "look it up and move on."
+
+**n8n's SQLite node wanted a completely different parameter syntax than I expected.** I wrote the
+update query the normal way — `UPDATE people SET skill_tags = ? WHERE person_id = ?` with plain `?`
+placeholders — and it just failed with "Too few parameter values were provided," no useful hint
+beyond that. I didn't have web access from where I was working, so instead of guessing at syntax
+variations I opened a shell into the running container and read the actual source of the installed
+`n8n-nodes-sqlite3` package. Turned out it parses placeholders like Postgres does — `$1`, `$2`, and
+so on — and it splits its parameter list on commas unless you hand it a real array, which breaks
+the moment one of your values contains a comma. Mine did: `skill_tags` looks like
+`"automation-heavy, web dev, data"`. So two things had to change together — the placeholders, and
+passing the parameters as an actual array expression rather than a joined string. Details are in
+`docs/specs/002-task2-n8n-automation.md` if you want the exact before/after.
+
+**pydub wouldn't even import.** `ModuleNotFoundError: No module named 'audioop'` — Python 3.13
+dropped that module from the standard library, and pydub depends on it unconditionally. Downgrading
+Python felt like the wrong fix since it'd ripple into everything else, and I'd already deliberately
+picked pydub for consistent duration/sample-rate/bitrate extraction, so swapping libraries wasn't
+appealing either. There's an actual maintained backport for exactly this situation —
+`audioop-lts` — so I added that instead, conditioned on Python version so it only installs where
+it's actually needed.
+
+**A real bug in my own merge logic, and I only found it because Task 4 forced a proper scan.**
+Task 4 isn't just "write down the issues you already noticed" — it wants a real pass over the
+finished database. Doing that turned up five people whose email or phone number was sitting there
+as `NULL` in the database, even though that exact value had clearly been used to match other rows
+against them during ingestion. The bug: when a new person gets created, I was only inserting their
+name — email and phone were supposed to get filled in afterward by whichever source file processed
+next, and two of my three per-source update steps forgot to include those columns. I fixed it so
+both get written the moment the row is created, reran the whole pipeline, and checked again to
+confirm there weren't any more like it.
