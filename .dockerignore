@@ -7,3 +7,6 @@ audio_uploads/
 *.sqlite3
 *.sqlite3-wal
 *.sqlite3-shm
+CLAUDE.md
+docs/claude-web-design/
+.env

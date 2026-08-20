@@ -12,6 +12,7 @@ Tracking file for ConsultBae AI Automation take-home assignment. Deadline: 2026-
 - [x] Spec + implement Task 5 — Scaling stretch doc (docs/specs/005-task5-scaling-doc.md) — TASK5_SCALING_NOTES.md, grounded in the real ambiguous-match cases found during Task 4.
 - [x] Submission package: README.md written (setup steps, data issues/scaling doc links, draft stuck log — **flagged for your review/personalization before submitting**, see README's stuck log note). CHANGELOG and FLOWS.md kept current throughout.
 - [x] Docker Compose setup (`docker-compose.yml`, `Dockerfile`, `.dockerignore`) to launch n8n + the audio app together with one command, reusing the existing `n8n_data` volume — verified nothing (owner account, workflow, community node, credentials) was lost switching the running n8n container over to compose.
+- [x] Security fix (found by automated commit review): the Docker Compose setup had baked `CLAUDE.md`/`docs/claude-web-design/` into the built image (via `COPY . .` with no `.dockerignore` entry for them) and exposed them live via the runtime bind mounts, undermining the earlier decision to keep them out of the repo; ports also published on `0.0.0.0` instead of localhost, exposing the unauthenticated audio app to the local network. Fixed all three; verified with `docker exec` that both files are unreachable in both containers post-fix, and confirmed n8n's state (login required, workflow, credentials) survived the rebuild.
 - [ ] User: screen recording (≤6 min)
 - [ ] User: reply to assignment email with repo + video links
 

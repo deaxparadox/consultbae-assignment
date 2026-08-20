@@ -68,3 +68,18 @@
   and bringing the stack up via compose: n8n showed a normal login screen (not first-run setup),
   and the "Skill Auto-Tagging" workflow, `n8n-nodes-sqlite3`, and both credentials all confirmed
   intact afterward. README updated with the one-command path as the primary setup option.
+- Security fix (flagged by automated commit review, verified as real before fixing): the Compose
+  setup's `Dockerfile` had no `.dockerignore` entry for `CLAUDE.md`/`docs/claude-web-design/`, so
+  `COPY . .` baked both into the built image layer — confirmed via `docker run --entrypoint sh`
+  against the already-built image, which showed both readable at `/app/CLAUDE.md` and
+  `/app/docs/claude-web-design/*`. The runtime bind mounts (`.:/data`, `.:/app`) exposed them live
+  too, independent of `.dockerignore` (which only affects build context, not volumes). Both
+  directly undermined the earlier explicit decision to keep these out of the repo. Also found both
+  services published ports on `0.0.0.0` rather than localhost, exposing the fully-unauthenticated
+  Streamlit app (handles real names/phone numbers) to the local network, not just this machine.
+  Fixed: added both paths (plus `.env`, preemptively) to `.dockerignore`; added shadow mounts
+  (`/dev/null` over the file, an anonymous volume over the directory) in `docker-compose.yml` as a
+  second line of defense against the runtime bind mount regardless of `.dockerignore`; changed both
+  port mappings to `127.0.0.1:PORT:PORT`. Rebuilt the image with the old cached layer removed,
+  verified both files are now empty/unreachable inside both containers, and confirmed the DB is
+  still accessible and n8n's persisted state (login required, workflow, credentials) survived.
