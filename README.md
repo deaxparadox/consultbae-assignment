@@ -19,17 +19,21 @@ docker volume create n8n_data   # only needed the very first time
 docker compose up -d --build
 ```
 
-That brings up n8n at `localhost:5678` and the Streamlit app at `localhost:8501` together. Both
-containers see the same repo through a bind mount, so they're reading and writing the same
-`consultbae.db`. n8n keeps its own state (owner login, credentials, the installed community node,
-the workflow itself) in a separate named volume, so restarting or rebuilding doesn't wipe any of
-that out.
+That brings up n8n at `localhost:5678` and the Streamlit app at `localhost:8501`, both pointed at
+the same `consultbae.db` file (each only gets that one file bind-mounted in, not the whole repo —
+kept deliberately narrow rather than just mounting everything). n8n keeps its own state (owner
+login, credentials, the installed community node, the workflow itself) in a separate named volume,
+so restarting or rebuilding doesn't wipe any of that out.
 
 Before any of that works you need the database to actually exist:
 
 ```bash
-docker compose run --rm audio_app python ingest/ingest.py
+docker compose run --rm ingest
 ```
+
+That one *does* get the whole repo mounted — it needs to read the source CSVs and write the
+resulting database back to the repo root, and it only ever runs as a one-off you trigger yourself,
+never as part of `up`.
 
 I kept this out of the normal startup on purpose — it rebuilds `consultbae.db` from scratch every
 time, and if you'd already run the n8n tagging step, that would wipe the tags back out. Run it once

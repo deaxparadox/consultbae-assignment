@@ -1,4 +1,15 @@
 services:
+  # One-off: builds consultbae.db from the source CSVs. Needs the full repo (to read
+  # docs/assignment-files and write the db back to the repo root), unlike the two services below.
+  # Never runs as part of `up` — profiles keeps it out of that — only via:
+  #   docker compose run --rm ingest
+  ingest:
+    build: .
+    profiles: ["tools"]
+    volumes:
+      - .:/app
+    command: ["python", "ingest/ingest.py"]
+
   n8n:
     image: docker.n8n.io/n8nio/n8n
     container_name: n8n
@@ -6,12 +17,7 @@ services:
       - "127.0.0.1:5678:5678"
     volumes:
       - n8n_data:/home/node/.n8n
-      - .:/data
-      # Shadow-mount private files out of the container even though the bind mount above covers
-      # the whole repo — belt-and-suspenders alongside .dockerignore, since .dockerignore only
-      # affects the build context, not runtime bind mounts. See TODO.md security fix entry.
-      - /dev/null:/data/CLAUDE.md:ro
-      - /data/docs/claude-web-design
+      - ./consultbae.db:/data/consultbae.db
     restart: unless-stopped
 
   audio_app:
@@ -20,9 +26,8 @@ services:
     ports:
       - "127.0.0.1:8501:8501"
     volumes:
-      - .:/app
-      - /dev/null:/app/CLAUDE.md:ro
-      - /app/docs/claude-web-design
+      - ./consultbae.db:/app/consultbae.db
+      - ./audio_uploads:/app/audio_uploads
     restart: unless-stopped
 
 volumes:

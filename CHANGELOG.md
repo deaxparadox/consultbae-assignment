@@ -85,3 +85,14 @@
   still accessible and n8n's persisted state (login required, workflow, credentials) survived.
 - Rewrote `README.md` in a plainer, first-person voice — same setup steps, report links, and stuck
   log content, just rephrased so it reads like the candidate wrote it rather than generated docs.
+- Fixed a crash on Windows/Docker Desktop: `docker compose up` failed with "make mountpoint
+  '/data/CLAUDE.md': file exists", caused by the previous shadow-mount fix (mounting the whole repo,
+  then mounting `/dev/null` over specific paths inside it) — that pattern turned out to be fragile
+  and platform-dependent, working on Linux but not on Windows' bind-mount handling. Root-cause fix:
+  stopped mounting the whole repo into `n8n`/`audio_app` at all. Each now gets only the single
+  file/directory it actually needs (`consultbae.db`; `audio_uploads/` for the audio app too) — which
+  makes the shadow-mount trick unnecessary rather than just less broken. The full-repo mount moved to
+  a new one-off `ingest` service (needs to read the CSVs and write the db), gated behind a Compose
+  profile so it never runs as part of `up` — only via `docker compose run --rm ingest`. Verified: `up`
+  no longer touches `ingest`, both long-running services still work end-to-end, and `CLAUDE.md`/
+  `docs/claude-web-design` are now simply absent from their containers rather than shadowed-empty.
