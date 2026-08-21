@@ -96,3 +96,9 @@
   profile so it never runs as part of `up` — only via `docker compose run --rm ingest`. Verified: `up`
   no longer touches `ingest`, both long-running services still work end-to-end, and `CLAUDE.md`/
   `docs/claude-web-design` are now simply absent from their containers rather than shadowed-empty.
+- Fixed `n8n/skill-tagging-flow.json`: it failed to import in n8n's UI with "The imported data does
+  not contain valid workflow data ('nodes' and 'connections' are missing)". Root cause: the
+  `n8n export:workflow` CLI command wrapped the workflow in a JSON array (`[{...}]`); the UI's
+  "Import from file" only accepts a plain workflow object at the top level. Unwrapped it to a plain
+  object and verified by importing it into the live local n8n instance — 6 nodes, 5 connections, no
+  error — then deleted that test import without touching the real workflow.
