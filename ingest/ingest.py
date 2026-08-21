@@ -282,6 +282,15 @@ def ingest_source3(conn, engine, log):
 
 def main():
     log = Log(LOG_PATH)
+    if DB_PATH.is_dir():
+        raise SystemExit(
+            f"{DB_PATH} is a directory, not a database file. This usually happens when Docker "
+            f"creates a placeholder directory because a single-file bind mount pointed at a path "
+            f"that didn't exist yet (e.g. running ingestion against the 'audio_app'/'n8n' services "
+            f"instead of the dedicated 'ingest' service). Remove it manually first — "
+            f"`rmdir /s /q {DB_PATH.name}` on Windows, `rm -rf {DB_PATH.name}` on Linux/macOS — "
+            f"then rerun this script."
+        )
     if DB_PATH.exists():
         DB_PATH.unlink()
         log(f"Removed existing {DB_PATH.name} — starting fresh")

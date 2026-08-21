@@ -102,3 +102,12 @@
   "Import from file" only accepts a plain workflow object at the top level. Unwrapped it to a plain
   object and verified by importing it into the live local n8n instance — 6 nodes, 5 connections, no
   error — then deleted that test import without touching the real workflow.
+- Fixed `ingest/ingest.py` raising `IsADirectoryError` on a fresh Windows clone. `consultbae.db`
+  didn't exist yet, and Docker Desktop's bind-mount handling creates a placeholder directory (on
+  both sides — inside the container and on the host) when a single-file mount targets a path that
+  isn't there yet; this got triggered by running ingestion against `audio_app`'s now single-file
+  mount (the pre-narrow-mount command) instead of the dedicated `ingest` service, which mounts the
+  full repo. Added an explicit, actionable error in the script for this case instead of leaving a
+  raw traceback — the user is about to record their demo, and a clear message beats a bare stack
+  trace on camera. Verified on Linux by deliberately recreating the directory-instead-of-file
+  condition and confirming both the new error message and normal operation afterward.
