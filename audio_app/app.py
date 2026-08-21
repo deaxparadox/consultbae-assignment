@@ -13,9 +13,13 @@ from normalize import normalize_phone  # noqa: E402
 
 from audio_metrics import extract_all_metrics  # noqa: E402
 
-DB_PATH = REPO_ROOT / "consultbae.db"
-AUDIO_DIR = REPO_ROOT / "audio_uploads"
-AUDIO_DIR.mkdir(exist_ok=True)
+# Both live under data/ (not the repo root) so Docker Compose can bind-mount a directory into
+# n8n/audio_app rather than a single file — single-file bind mounts are unreliable on Docker
+# Desktop for Windows. See ADR 0001 Amendments.
+DATA_DIR = REPO_ROOT / "data"
+DB_PATH = DATA_DIR / "consultbae.db"
+AUDIO_DIR = DATA_DIR / "audio_uploads"
+AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def get_conn():

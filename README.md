@@ -20,10 +20,12 @@ docker compose up -d --build
 ```
 
 That brings up n8n at `localhost:5678` and the Streamlit app at `localhost:8501`, both pointed at
-the same `consultbae.db` file (each only gets that one file bind-mounted in, not the whole repo —
-kept deliberately narrow rather than just mounting everything). n8n keeps its own state (owner
-login, credentials, the installed community node, the workflow itself) in a separate named volume,
-so restarting or rebuilding doesn't wipe any of that out.
+the same database, which lives in its own `data/` folder rather than the repo root — each service
+only gets that one folder mounted in, not the whole repo. It's a folder rather than a single file
+on purpose: single-file bind mounts are unreliable on Docker Desktop for Windows, mounting a
+directory isn't. n8n keeps its own state (owner login, credentials, the installed community node,
+the workflow itself) in a separate named volume, so restarting or rebuilding doesn't wipe any of
+that out.
 
 Before any of that works you need the database to actually exist:
 
@@ -55,8 +57,8 @@ python3 -m venv .venv
 .venv/bin/python ingest/ingest.py
 ```
 
-That last command is Task 1 — it builds `consultbae.db` from the three CSVs and prints a summary of
-what it did (also saved to `ingest/ingestion_log.txt`, which is where the numbers in
+That last command is Task 1 — it builds `data/consultbae.db` from the three CSVs and prints a
+summary of what it did (also saved to `ingest/ingestion_log.txt`, which is where the numbers in
 `DATA_ISSUES.md` actually came from).
 
 n8n still needs Docker either way:
@@ -64,7 +66,7 @@ n8n still needs Docker either way:
 ```bash
 docker run -d --name n8n -p 5678:5678 \
   -v n8n_data:/home/node/.n8n \
-  -v "$(pwd)":/data \
+  -v "$(pwd)/data":/data \
   docker.n8n.io/n8nio/n8n
 ```
 

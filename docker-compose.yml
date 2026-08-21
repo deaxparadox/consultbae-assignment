@@ -17,7 +17,10 @@ services:
       - "127.0.0.1:5678:5678"
     volumes:
       - n8n_data:/home/node/.n8n
-      - ./consultbae.db:/data/consultbae.db
+      # Directory mount, not a single-file mount — single-file bind mounts are unreliable on
+      # Docker Desktop for Windows. consultbae.db lives inside ./data, so the SQLite credential's
+      # path stays /data/consultbae.db either way.
+      - ./data:/data
     restart: unless-stopped
 
   audio_app:
@@ -26,8 +29,7 @@ services:
     ports:
       - "127.0.0.1:8501:8501"
     volumes:
-      - ./consultbae.db:/app/consultbae.db
-      - ./audio_uploads:/app/audio_uploads
+      - ./data:/app/data
     restart: unless-stopped
 
 volumes:

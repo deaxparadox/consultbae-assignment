@@ -1,5 +1,6 @@
 """Task 1 — merge 3 source CSVs into consultbae.db (SQLite). See docs/specs/001 and ADR 0001."""
 import json
+import os
 import sqlite3
 from pathlib import Path
 
@@ -21,7 +22,11 @@ from normalize import (
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ASSIGNMENT_FILES = REPO_ROOT / "docs" / "assignment-files"
-DB_PATH = REPO_ROOT / "consultbae.db"
+# Lives in its own directory (not the repo root) so Docker Compose can bind-mount a directory
+# into n8n/audio_app rather than a single file — single-file bind mounts are unreliable on Docker
+# Desktop for Windows regardless of which container starts first. See ADR 0001 Amendments.
+DATA_DIR = REPO_ROOT / "data"
+DB_PATH = DATA_DIR / "consultbae.db"
 LOG_PATH = REPO_ROOT / "ingest" / "ingestion_log.txt"
 
 SCHEMA = """
@@ -282,14 +287,12 @@ def ingest_source3(conn, engine, log):
 
 def main():
     log = Log(LOG_PATH)
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
     if DB_PATH.is_dir():
         raise SystemExit(
-            f"{DB_PATH} is a directory, not a database file. This usually happens when Docker "
-            f"creates a placeholder directory because a single-file bind mount pointed at a path "
-            f"that didn't exist yet (e.g. running ingestion against the 'audio_app'/'n8n' services "
-            f"instead of the dedicated 'ingest' service). Remove it manually first — "
-            f"`rmdir /s /q {DB_PATH.name}` on Windows, `rm -rf {DB_PATH.name}` on Linux/macOS — "
-            f"then rerun this script."
+            f"{DB_PATH} is a directory, not a database file — remove it manually first "
+            f"(`rmdir /s /q {DB_PATH}` on Windows, `rm -rf {DB_PATH}` on Linux/macOS), then rerun "
+            f"this script."
         )
     if DB_PATH.exists():
         DB_PATH.unlink()
@@ -319,6 +322,19 @@ def main():
     log(f"Total source_records rows: {total_source_records}")
 
     conn.close()
+
+    # This script and n8n's SQLite node run as different container users (this one as root,
+    # n8n's as its own non-root user) but both need to read AND write this file, so it can't be
+    # left at SQLite's default create mode (owner-write-only) — that produces a silent
+    # "attempt to write a readonly database" failure from whichever side isn't the file's owner.
+    # Making it explicit and visible rather than a fallback nobody can see.
+    os.chmod(DATA_DIR, 0o777)
+    for path in [DB_PATH, DB_PATH.with_name(DB_PATH.name + "-wal"), DB_PATH.with_name(DB_PATH.name + "-shm")]:
+        if path.exists():
+            os.chmod(path, 0o666)
+    log(f"Set {DATA_DIR} and its contents to be readable/writable by any container user "
+        f"(n8n and this script run as different users but both need write access)")
+
     log.flush()
     print(f"\nLog written to {LOG_PATH}")
 

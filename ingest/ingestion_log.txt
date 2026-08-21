@@ -1,4 +1,3 @@
-Removed existing consultbae.db — starting fresh
 
 === source1_naukri_applicants.csv: 42 data rows in file ===
   FLAGGED: 'Rohit Verma' matches existing person_id=24 ('R. Verma') on email, but names differ — NOT auto-merged, creating separate record
@@ -18,3 +17,4 @@ Rows merged into existing people: 41
 Flagged (name mismatch on email/phone match): 1
 Total people in DB: 61
 Total source_records rows: 102
+Set /app/data and its contents to be readable/writable by any container user (n8n and this script run as different users but both need write access)

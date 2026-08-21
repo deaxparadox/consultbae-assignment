@@ -22,10 +22,23 @@ architecture reference; per-task specs reference this ADR rather than re-derivin
   present in the data — instead `gig_rate_normalized` stores the numeric amount in its native unit
   and `gig_rate_unit` records which unit that is, so nothing is silently misrepresented. Logged as a
   judgment call in `DATA_ISSUES.md`, not treated as a design gap to silently patch around.
+- **`consultbae.db` moved into its own `data/` directory**, not the repo root, and the Docker
+  Compose setup mounts that directory rather than the single file into `n8n`/`audio_app`. Found
+  during Windows testing: Docker Desktop's single-file bind mounts are unreliable — regardless of
+  which container starts first, Docker can create a placeholder directory in place of the file
+  instead of mounting it. Directory mounts don't have this problem on any platform. Both
+  `ingest/ingest.py` and `audio_app/app.py` resolve the path relative to their own file location
+  (`REPO_ROOT / "data" / "consultbae.db"`), so nothing outside those two constants needed to change.
+- **`ingest/ingest.py` explicitly chmods the database (and its `-wal`/`-shm` files) to `0o666`, and
+  `data/` to `0o777`, after building it.** Found during Windows testing: the one-off `ingest`
+  container and n8n's container run as different users (root vs. n8n's own non-root user) — SQLite
+  creates new files owner-write-only by default, so n8n's process could read but not write the
+  database it needed to update, failing with "attempt to write a readonly database" on the final
+  `UPDATE`. Made the permission fix explicit and logged, not a silent side effect.
 
 ## Decisions
 
-**Database: SQLite**, file-based, at project root, shared by Task 1 (writer), Task 2 (reader/writer
+**Database: SQLite**, in its own `data/` directory (see Amendments — not the repo root), shared by Task 1 (writer), Task 2 (reader/writer
 via n8n), and Task 3 (writer). Chosen for zero setup and because the schema is designed as plain
 relational tables with no SQLite-specific features (see Task 5 doc — migrating to Postgres later is
 a connection-string swap, not a redesign).

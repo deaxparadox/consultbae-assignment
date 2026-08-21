@@ -111,3 +111,17 @@
   raw traceback — the user is about to record their demo, and a clear message beats a bare stack
   trace on camera. Verified on Linux by deliberately recreating the directory-instead-of-file
   condition and confirming both the new error message and normal operation afterward.
+- Root-caused two further real cross-platform issues after the user reported the DB erroring out
+  regardless of which service they ran first. First: single-file bind mounts are genuinely
+  unreliable on Docker Desktop for Windows independent of ordering — not a race condition to work
+  around, a reason to stop doing it. Moved `consultbae.db` (and `audio_uploads/`) into their own
+  `data/` directory so `n8n`/`audio_app` mount a directory instead of a file; `docker-compose.yml`,
+  `ingest/ingest.py`, and `audio_app/app.py` all updated to match (`REPO_ROOT / "data" / ...`).
+  Second, surfaced only once the first fix was in place: n8n then failed the final write with
+  `attempt to write a readonly database` — the one-off `ingest` container runs as root while n8n
+  runs as its own non-root user, and SQLite creates new files owner-write-only by default, so n8n
+  could read but not write a database `ingest` had created. Fixed by explicitly chmod'ing the
+  database (and its `-wal`/`-shm` files) to `0o666` and `data/` to `0o777` right after ingestion —
+  made visible in the log output rather than a silent side effect. Verified the real fix end-to-end
+  via browser automation: full n8n execution succeeded, all 56 rows written with `changes: 1`, zero
+  errors. Updated ADR 0001 and README to reflect the new path and the reasoning behind both fixes.
